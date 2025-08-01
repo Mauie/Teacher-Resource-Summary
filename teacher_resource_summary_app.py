@@ -152,6 +152,3 @@ if raw_data:
         )
 else:
     st.info("Please upload one or more resource files.")
-
-
-Fix: include full end date in filter
