@@ -156,7 +156,8 @@ if uploaded_files:
 
             if any(keyword in col_lower for keyword in [
                 "teacher",
-                "created"
+                "created",
+                "author"
             ]):
 
                 teacher_column = col
@@ -182,14 +183,6 @@ if uploaded_files:
         st.write("Detected Teacher Column:", teacher_column)
         st.write("All Columns Found:")
         st.write(list(data.columns))
-        
-        st.write("**Debug Info:**")
-        st.write("Column names (lowercased):")
-        for col in data.columns:
-            col_lower = str(col).lower().strip()
-            col_lower_no_space = col_lower.replace(" ", "")
-            st.write(f"  - '{col_lower}' (no spaces: '{col_lower_no_space}')")
-        
         st.write("Detected Subject Column:", subject_column)
         st.write("Detected Date Column:", date_column)
 
@@ -242,46 +235,45 @@ if uploaded_files:
             if date_column:
 
 
-                data[date_column] = pd.to_datetime(
-                    data[date_column],
-                    errors="coerce"
-                )
-
-
-                st.sidebar.header(
-                    "📅 Date Filter"
-                )
-
-
-                min_date = data[date_column].min()
-                max_date = data[date_column].max()
-
-
-
-                if pd.notna(min_date) and pd.notna(max_date):
-
-
-                    date_range = st.sidebar.date_input(
-                        "Select Date Range",
-                        value=(
-                            min_date,
-                            max_date
-                        )
+                try:
+                    data[date_column] = pd.to_datetime(
+                        data[date_column],
+                        errors="coerce"
                     )
 
+                    min_date = data[date_column].min()
+                    max_date = data[date_column].max()
+
+                    if pd.notna(min_date) and pd.notna(max_date):
+
+                        st.sidebar.header(
+                            "📅 Date Filter"
+                        )
+
+                        date_range = st.sidebar.date_input(
+                            "Select Date Range",
+                            value=(
+                                min_date,
+                                max_date
+                            )
+                        )
 
 
-                    if len(date_range) == 2:
+
+                        if len(date_range) == 2:
 
 
-                        start_date, end_date = date_range
+                            start_date, end_date = date_range
 
 
-                        data = data[
-                            (data[date_column] >= pd.Timestamp(start_date))
-                            &
-                            (data[date_column] <= pd.Timestamp(end_date))
-                        ]
+                            data = data[
+                                (data[date_column] >= pd.Timestamp(start_date))
+                                &
+                                (data[date_column] <= pd.Timestamp(end_date))
+                            ]
+
+                except Exception as e:
+                    st.warning(f"Could not parse date column: {e}")
 
 
 
@@ -390,5 +382,5 @@ if uploaded_files:
 
 
             st.error(
-                "Teacher Name column was not detected. Please check if your file has a Created By column."
+                "Teacher Name column was not detected. Please check if your file has a Created By or Author column."
             )
