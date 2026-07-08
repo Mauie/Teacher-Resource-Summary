@@ -150,6 +150,7 @@ if uploaded_files:
 
 
             col_lower = str(col).lower().strip()
+            col_lower_no_space = col_lower.replace(" ", "")
 
 
 
@@ -162,7 +163,11 @@ if uploaded_files:
 
 
 
-            if "subject" in col_lower:
+            if any(keyword in col_lower_no_space for keyword in [
+                "subject",
+                "course",
+                "topic"
+            ]):
 
                 subject_column = col
 
@@ -181,7 +186,9 @@ if uploaded_files:
         st.write("**Debug Info:**")
         st.write("Column names (lowercased):")
         for col in data.columns:
-            st.write(f"  - '{str(col).lower().strip()}'")
+            col_lower = str(col).lower().strip()
+            col_lower_no_space = col_lower.replace(" ", "")
+            st.write(f"  - '{col_lower}' (no spaces: '{col_lower_no_space}')")
         
         st.write("Detected Subject Column:", subject_column)
         st.write("Detected Date Column:", date_column)
