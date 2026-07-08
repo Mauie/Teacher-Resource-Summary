@@ -49,32 +49,52 @@ def read_file(uploaded_file):
 
     file_name = uploaded_file.name.lower()
 
-    if file_name.endswith(".csv"):
-        return pd.read_csv(uploaded_file)
+    try:
 
-    elif file_name.endswith(".xlsx"):
-        return pd.read_excel(uploaded_file)
+        if file_name.endswith(".csv"):
+            return pd.read_csv(uploaded_file)
 
-    elif file_name.endswith(".xls"):
-        return pd.read_excel(uploaded_file)
 
-    elif file_name.endswith(".xml"):
+        elif file_name.endswith(".xlsx"):
+            return pd.read_excel(
+                uploaded_file,
+                engine="openpyxl"
+            )
 
-        tree = ET.parse(uploaded_file)
-        root = tree.getroot()
 
-        rows = []
+        elif file_name.endswith(".xls"):
 
-        for row in root.iter():
-            data = {}
+            try:
+                return pd.read_excel(
+                    uploaded_file,
+                    engine="xlrd"
+                )
 
-            for child in row:
-                data[child.tag] = child.text
+            except Exception:
 
-            if data:
-                rows.append(data)
+                uploaded_file.seek(0)
 
-        return pd.DataFrame(rows)
+                # Handles Excel XML saved as .xls
+                return pd.read_xml(
+                    uploaded_file
+                )
+
+
+        elif file_name.endswith(".xml"):
+
+            return pd.read_xml(
+                uploaded_file
+            )
+
+
+    except Exception as e:
+
+        st.error(
+            f"Cannot read {uploaded_file.name}: {e}"
+        )
+
+        return pd.DataFrame()
+
 
     return pd.DataFrame()
 
