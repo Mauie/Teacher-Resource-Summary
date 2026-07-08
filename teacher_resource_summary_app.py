@@ -162,11 +162,7 @@ if uploaded_files:
 
 
 
-            if any(keyword in col_lower for keyword in [
-                "subject",
-                "course",
-                "topic"
-            ]):
+            if "subject" in col_lower:
 
                 subject_column = col
 
@@ -181,6 +177,12 @@ if uploaded_files:
         st.write("Detected Teacher Column:", teacher_column)
         st.write("All Columns Found:")
         st.write(list(data.columns))
+        
+        st.write("**Debug Info:**")
+        st.write("Column names (lowercased):")
+        for col in data.columns:
+            st.write(f"  - '{str(col).lower().strip()}'")
+        
         st.write("Detected Subject Column:", subject_column)
         st.write("Detected Date Column:", date_column)
 
