@@ -71,21 +71,20 @@ if uploaded_files:
             df = df[df["Teacher Name"] != ""]
 
             # ==========================
-# Clean Subject Column
-# ==========================
-if "Subject" in df.columns:
-    df["Subject"] = (
-        df["Subject"]
-        .fillna("")
-        .astype(str)
-        .str.strip()
-    )
-else:
-    df["Subject"] = "No Subject"
-    
+            # Clean Subject Column
+            # ==========================
+            if "Subject" in df.columns:
+                df["Subject"] = (
+                    df["Subject"]
+                    .fillna("")
+                    .astype(str)
+                    .str.strip()
+                )
+            else:
+                df["Subject"] = "No Subject"
+
             if "Created Date" in df.columns:
                 df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
-
             match = re.search(r"(quiz|lesson|exam|forum|activity)", file.name.lower())
             resource_type = match.group(1).capitalize() if match else os.path.splitext(file.name)[0].capitalize()
             df["Resource Type"] = resource_type
