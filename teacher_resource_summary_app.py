@@ -54,20 +54,26 @@ def read_file(uploaded_file):
 
         elif file_name.endswith(".xls"):
 
+            # Try reading as Excel first
             try:
-
                 return pd.read_excel(
                     uploaded_file,
                     engine="xlrd"
                 )
-
             except Exception:
-
-                uploaded_file.seek(0)
-
-                return pd.read_xml(
-                    uploaded_file
-                )
+                # If xlrd fails, try openpyxl
+                try:
+                    uploaded_file.seek(0)
+                    return pd.read_excel(
+                        uploaded_file,
+                        engine="openpyxl"
+                    )
+                except Exception:
+                    # Last resort: try XML parsing
+                    uploaded_file.seek(0)
+                    return pd.read_xml(
+                        uploaded_file
+                    )
 
 
 
@@ -134,7 +140,7 @@ if uploaded_files:
         st.subheader("Preview Data")
 
         st.dataframe(
-            data.head()
+            data.head(10)
         )
 
 
@@ -156,7 +162,7 @@ if uploaded_files:
 
             if any(keyword in col_lower for keyword in [
                 "teacher",
-                "created",
+                "created by",
                 "author"
             ]):
 
@@ -174,7 +180,10 @@ if uploaded_files:
 
 
 
-            if "date" in col_lower or "created" in col_lower:
+            if any(keyword in col_lower for keyword in [
+                "date",
+                "created date"
+            ]):
 
                 date_column = col
 
@@ -253,8 +262,8 @@ if uploaded_files:
                         date_range = st.sidebar.date_input(
                             "Select Date Range",
                             value=(
-                                min_date,
-                                max_date
+                                min_date.date(),
+                                max_date.date()
                             )
                         )
 
@@ -382,5 +391,5 @@ if uploaded_files:
 
 
             st.error(
-                "Teacher Name column was not detected. Please check if your file has a Created By or Author column."
+                "Teacher Name column was not detected. Please check if your file has a 'Created By' or 'Author' column."
             )
