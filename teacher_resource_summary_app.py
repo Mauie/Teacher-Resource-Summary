@@ -151,8 +151,8 @@ if uploaded_files:
                 "teacher",
                 "created by",
                 "createdby"
-]):
-    teacher_column = col
+       ]):
+              teacher_column = col
             if "subject" in col_lower:
                 subject_column = col
 
