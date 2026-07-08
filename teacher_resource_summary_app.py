@@ -147,9 +147,12 @@ if uploaded_files:
 
             col_lower = str(col).lower()
 
-            if "teacher" in col_lower or "created by" in col_lower:
-                teacher_column = col
-
+           if any(keyword in col_lower for keyword in [
+                "teacher",
+                "created by",
+                "createdby"
+]):
+    teacher_column = col
             if "subject" in col_lower:
                 subject_column = col
 
