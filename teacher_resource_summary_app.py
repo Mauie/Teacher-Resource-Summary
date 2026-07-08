@@ -162,7 +162,11 @@ if uploaded_files:
 
 
 
-            if "subject" in col_lower:
+            if any(keyword in col_lower for keyword in [
+                "subject",
+                "course",
+                "topic"
+            ]):
 
                 subject_column = col
 
