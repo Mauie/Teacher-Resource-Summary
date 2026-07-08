@@ -55,22 +55,21 @@ def read_file(uploaded_file):
 
 
 
-        elif file_name.endswith(".xls"):
+       elif file_name.endswith(".xls"):
 
-            try:
+    try:
+        return pd.read_excel(
+            uploaded_file,
+            engine="xlrd"
+        )
 
-                return pd.read_excel(
-                    uploaded_file,
-                    engine="xlrd"
-                )
+    except Exception:
 
-            except Exception:
+        uploaded_file.seek(0)
 
-                uploaded_file.seek(0)
-
-                return pd.read_xml(
-                    uploaded_file
-                )
+        return pd.read_html(
+            uploaded_file
+        )[0]
 
 
 
