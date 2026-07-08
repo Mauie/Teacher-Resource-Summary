@@ -97,36 +97,49 @@ else:
 
 if raw_data:
     combined_df = pd.concat(raw_data, ignore_index=True)
-# ==========================
-# Subject Filter
-# ==========================
-subjects = sorted(filtered_df["Subject"].dropna().unique())
-
-all_subjects = "All Subjects"
-
-selected_subjects = st.multiselect(
-    "📚 Filter by Subject",
-    [all_subjects] + list(subjects),
-    default=all_subjects,
-)
-
-if all_subjects not in selected_subjects:
-    filtered_df = filtered_df[
-        filtered_df["Subject"].isin(selected_subjects)
-    ]
 
     st.subheader("🔎 Filter Options")
 
-    teacher_names = combined_df["Teacher Name"].dropna().unique().tolist()
-    teacher_names.sort()
+    # ==========================
+    # Teacher Filter
+    # ==========================
+    teacher_names = sorted(combined_df["Teacher Name"].dropna().unique().tolist())
+
     all_option = "All (Select All)"
     teacher_names_with_all = [all_option] + teacher_names
-    selected_teachers = st.multiselect("👤 Filter by Teacher Name", teacher_names_with_all, default=all_option)
+
+    selected_teachers = st.multiselect(
+        "👤 Filter by Teacher Name",
+        teacher_names_with_all,
+        default=all_option,
+    )
 
     if all_option in selected_teachers:
         selected_teachers = teacher_names
 
-    filtered_df = combined_df[combined_df["Teacher Name"].isin(selected_teachers)]
+    filtered_df = combined_df[
+        combined_df["Teacher Name"].isin(selected_teachers)
+    ]
+
+    # ==========================
+    # Subject Filter
+    # ==========================
+    if "Subject" in filtered_df.columns:
+
+        subjects = sorted(filtered_df["Subject"].dropna().unique().tolist())
+
+        subject_all = "All Subjects"
+
+        selected_subjects = st.multiselect(
+            "📚 Filter by Subject",
+            [subject_all] + subjects,
+            default=subject_all,
+        )
+
+        if subject_all not in selected_subjects:
+            filtered_df = filtered_df[
+                filtered_df["Subject"].isin(selected_subjects)
+            ]
 
     # ✅ FIXED: Include the full end date by extending it to 23:59:59
     if "Created Date" in filtered_df.columns and not filtered_df["Created Date"].isna().all():
@@ -143,22 +156,20 @@ if all_subjects not in selected_subjects:
     if filtered_df.empty:
         st.warning("⚠️ No data after filtering.")
     else:
-        summary = (
+       summary = (
     filtered_df
-    .groupby(["Subject", "Teacher Name", "Resource Type"])
+    .groupby(["Teacher Name", "Resource Type"])
     .size()
     .unstack(fill_value=0)
     .reset_index()
 )
-summary = summary.sort_values(
-    ["Subject", "Teacher Name"]
-).reset_index(drop=True)
+
+summary = summary.sort_values("Teacher Name").reset_index(drop=True)
 
 numeric_cols = summary.select_dtypes(include="number").columns
 summary["Total"] = summary[numeric_cols].sum(axis=1)
 
 total_row = {
-    "Subject": "",
     "Teacher Name": "Total"
 }
 
@@ -167,7 +178,11 @@ for col in numeric_cols:
 
 summary.loc[len(summary)] = total_row
 
-summary.insert(0, "No.", list(range(1, len(summary))) + [None])
+summary.insert(
+    0,
+    "No.",
+    list(range(1, len(summary))) + [None]
+)
         st.subheader("📋 Filtered Resource Summary")
         st.dataframe(summary, use_container_width=True)
 
