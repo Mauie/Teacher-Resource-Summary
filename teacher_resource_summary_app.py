@@ -140,7 +140,8 @@ if uploaded_files:
         st.subheader("Preview Data")
 
         st.dataframe(
-            data.head(10)
+            data.head(10),
+            use_container_width=True
         )
 
 
@@ -149,6 +150,8 @@ if uploaded_files:
         teacher_column = None
         subject_column = None
         date_column = None
+        title_column = None
+        access_column = None
 
 
 
@@ -159,6 +162,9 @@ if uploaded_files:
             col_lower_no_space = col_lower.replace(" ", "")
 
 
+
+            if col_lower == "title":
+                title_column = col
 
             if any(keyword in col_lower for keyword in [
                 "teacher",
@@ -186,6 +192,9 @@ if uploaded_files:
             ]):
 
                 date_column = col
+
+            if "total access" in col_lower or "access" in col_lower:
+                access_column = col
 
 
 
@@ -286,6 +295,21 @@ if uploaded_files:
 
 
 
+            # FILTERED DATA VIEW
+
+            st.subheader(
+                "📋 Filtered Resources"
+            )
+
+            display_columns = [title_column, subject_column, teacher_column, date_column, access_column]
+            display_columns = [col for col in display_columns if col is not None]
+
+            st.dataframe(
+                data[display_columns],
+                use_container_width=True
+            )
+
+
             # TEACHER SUMMARY
 
             st.subheader(
@@ -358,6 +382,11 @@ if uploaded_files:
                 engine="xlsxwriter"
             ) as writer:
 
+                data[display_columns].to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="Filtered Data"
+                )
 
                 teacher_summary.to_excel(
                     writer,
