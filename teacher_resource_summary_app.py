@@ -6,224 +6,317 @@ import re
 import os
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Teacher Resource Summary", layout="centered")
+st.set_page_config(
+    page_title="Teacher Resource Summary",
+    layout="centered"
+)
+
 st.title("📊 Teacher Resource Summary Tool")
 
 uploaded_files = st.file_uploader(
     "Upload resource files (Excel, CSV, XML)",
     type=["xls", "xlsx", "csv", "xml"],
-    accept_multiple_files=True,
+    accept_multiple_files=True
 )
 
-raw_data = []
+# Resource columns
+resource_columns = [
+    "Lesson",
+    "Quiz",
+    "Assignment",
+    "Shared Blog",
+    "Survey",
+    "Forum",
+    "Announcement",
+    "Message",
+    "Flashcard"
+]
+
+
+# Function to clean names
+def clean_name(name):
+    if pd.isna(name):
+        return ""
+
+    name = str(name).strip()
+    name = re.sub(r"\s+", " ", name)
+
+    return name
+
+
+# Function to read files
+def read_file(uploaded_file):
+
+    file_name = uploaded_file.name.lower()
+
+    if file_name.endswith(".csv"):
+        return pd.read_csv(uploaded_file)
+
+    elif file_name.endswith(".xlsx"):
+        return pd.read_excel(uploaded_file)
+
+    elif file_name.endswith(".xls"):
+        return pd.read_excel(uploaded_file)
+
+    elif file_name.endswith(".xml"):
+
+        tree = ET.parse(uploaded_file)
+        root = tree.getroot()
+
+        rows = []
+
+        for row in root.iter():
+            data = {}
+
+            for child in row:
+                data[child.tag] = child.text
+
+            if data:
+                rows.append(data)
+
+        return pd.DataFrame(rows)
+
+    return pd.DataFrame()
+
 
 if uploaded_files:
+
+    all_data = []
+
     for file in uploaded_files:
-        try:
-            file_head = file.read(2048).decode("utf-8", errors="ignore").lower()
-            file.seek(0)
 
-            is_xml = "<?xml" in file_head and (
-                "<workbook" in file_head or "urn:schemas-microsoft-com:office:spreadsheet" in file_head
-            )
+        df = read_file(file)
 
-            if is_xml:
-                tree = ET.parse(file)
-                root = tree.getroot()
-                ns = {"ss": "urn:schemas-microsoft-com:office:spreadsheet"}
-                table = root.find(".//ss:Table", ns)
+        if not df.empty:
 
-                if table is not None:
-                    rows = table.findall("ss:Row", ns)
-                    data = []
-                    for row in rows:
-                        values = []
-                        for cell in row.findall("ss:Cell", ns):
-                            data_elem = cell.find("ss:Data", ns)
-                            values.append(data_elem.text.strip() if data_elem is not None and data_elem.text else "")
-                        data.append(values)
-
-                    if len(data) < 2:
-                        st.warning(f"⚠️ Skipped {file.name} due to insufficient rows.")
-                        continue
-
-                    df = pd.DataFrame(data[1:], columns=data[0])
-                else:
-                    st.warning(f"⚠️ Skipped {file.name} due to missing XML table.")
-                    continue
-            elif file.name.endswith(".csv"):
-                df = pd.read_csv(file)
-            else:
-                df = pd.read_excel(file)
-
-            df.columns = df.columns.str.strip()
-
-            if "Teacher Name" not in df.columns:
-                if "Created By" in df.columns:
-                    df.rename(columns={"Created By": "Teacher Name"}, inplace=True)
-                elif df.shape[1] == 1:
-                    df.columns = ["Teacher Name"]
-                else:
-                    st.warning(f"⚠️ Skipped {file.name} due to unknown teacher column.")
-                    continue
-
-            df["Teacher Name"] = df["Teacher Name"].fillna("").astype(str).str.strip()
-            df = df[df["Teacher Name"] != ""]
-
-            # ==========================
-            # Clean Subject Column
-            # ==========================
-            if "Subject" in df.columns:
-                df["Subject"] = (
-                    df["Subject"]
-                    .fillna("")
-                    .astype(str)
-                    .str.strip()
-                )
-            else:
-                df["Subject"] = "No Subject"
-
-            if "Created Date" in df.columns:
-                df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
-            match = re.search(r"(quiz|lesson|exam|forum|activity)", file.name.lower())
-            resource_type = match.group(1).capitalize() if match else os.path.splitext(file.name)[0].capitalize()
-            df["Resource Type"] = resource_type
-
-            raw_data.append(df)
-
-        except Exception as e:
-            st.error(f"❌ Error processing {file.name}: {e}")
-
-if raw_data:
-    combined_df = pd.concat(raw_data, ignore_index=True)
-
-    st.subheader("🔎 Filter Options")
-
-    # ==========================
-    # Teacher Filter
-    # ==========================
-    teacher_names = sorted(combined_df["Teacher Name"].dropna().unique().tolist())
-
-    all_option = "All (Select All)"
-    teacher_names_with_all = [all_option] + teacher_names
-
-    selected_teachers = st.multiselect(
-        "👤 Filter by Teacher Name",
-        teacher_names_with_all,
-        default=all_option,
-    )
-
-    if all_option in selected_teachers:
-        selected_teachers = teacher_names
-
-    filtered_df = combined_df[
-        combined_df["Teacher Name"].isin(selected_teachers)
-    ]
-
-    # ==========================
-    # Subject Filter
-    # ==========================
-    if "Subject" in filtered_df.columns:
-
-        subjects = sorted(filtered_df["Subject"].dropna().unique().tolist())
-
-        subject_all = "All Subjects"
-
-        selected_subjects = st.multiselect(
-            "📚 Filter by Subject",
-            [subject_all] + subjects,
-            default=subject_all,
-        )
-
-        if subject_all not in selected_subjects:
-            filtered_df = filtered_df[
-                filtered_df["Subject"].isin(selected_subjects)
+            df.columns = [
+                str(col).strip()
+                for col in df.columns
             ]
 
-    # ✅ FIXED: Include the full end date by extending it to 23:59:59
-    if "Created Date" in filtered_df.columns and not filtered_df["Created Date"].isna().all():
-        min_date = filtered_df["Created Date"].min().date()
-        max_date = filtered_df["Created Date"].max().date()
-        date_range = st.date_input("📅 Filter by Created Date Range", [min_date, max_date])
-        start_date = pd.to_datetime(date_range[0])
-        end_date = pd.to_datetime(date_range[1]) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+            all_data.append(df)
 
-        filtered_df = filtered_df[
-            (filtered_df["Created Date"] >= start_date) & (filtered_df["Created Date"] <= end_date)
-        ]
 
-        if filtered_df.empty:
-        st.warning("⚠️ No data after filtering.")
-    else:
-        summary = (
-            filtered_df
-            .groupby(["Teacher Name", "Resource Type"])
-            .size()
-            .unstack(fill_value=0)
-            .reset_index()
+    if all_data:
+
+        data = pd.concat(
+            all_data,
+            ignore_index=True
         )
 
-        summary = summary.sort_values("Teacher Name").reset_index(drop=True)
 
-        numeric_cols = summary.select_dtypes(include="number").columns
-        summary["Total"] = summary[numeric_cols].sum(axis=1)
-
-        total_row = {
-            "Teacher Name": "Total"
-        }
-
-        for col in numeric_cols:
-            total_row[col] = summary[col].sum()
-
-        summary.loc[len(summary)] = total_row
-
-        summary.insert(
-            0,
-            "No.",
-            list(range(1, len(summary))) + [None]
+        st.success(
+            f"{len(uploaded_files)} file(s) uploaded successfully"
         )
 
-        st.subheader("📋 Filtered Resource Summary")
-        st.dataframe(summary, use_container_width=True)
 
-        st.subheader("📊 Bar Chart")
-        chart_data = summary.iloc[:-1].set_index("Teacher Name").drop(
-            columns=["No.", "Total"],
-            errors="ignore"
-        )
-        st.bar_chart(chart_data)
+        st.subheader("Preview Data")
 
-        st.subheader("🥧 Pie Chart")
-        pie_data = summary.iloc[:-1].set_index("Teacher Name")["Total"]
+        st.dataframe(data.head())
 
-        fig, ax = plt.subplots()
-        ax.pie(
-            pie_data,
-            labels=pie_data.index,
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.axis("equal")
-        st.pyplot(fig)
 
-        chart_img = io.BytesIO()
-        fig.savefig(chart_img, format="png")
-        chart_img.seek(0)
+        # Continue to Part 2...
+                # Detect important columns
 
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            summary.to_excel(writer, index=False, sheet_name="Summary")
-            chart_data.to_excel(writer, sheet_name="Chart Data")
-            writer.sheets["Summary"].insert_image(
-                "H2",
-                "chart.png",
-                {"image_data": chart_img},
+        teacher_column = None
+        subject_column = None
+        date_column = None
+
+
+        for col in data.columns:
+
+            col_lower = str(col).lower()
+
+            if "teacher" in col_lower or "created by" in col_lower:
+                teacher_column = col
+
+            if "subject" in col_lower:
+                subject_column = col
+
+            if "date" in col_lower or "created" in col_lower:
+                date_column = col
+
+
+
+        if teacher_column:
+
+            data[teacher_column] = (
+                data[teacher_column]
+                .apply(clean_name)
             )
 
-        st.download_button(
-            "⬇️ Download Filtered Excel with Chart",
-            data=output.getvalue(),
-            file_name="teacher_resource_summary_filtered.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    st.info("Please upload one or more resource files.")
+
+            # Subject filter and sorting
+
+            if subject_column:
+
+                st.sidebar.header("🔎 Subject Filter")
+
+                subjects = sorted(
+                    data[subject_column]
+                    .dropna()
+                    .unique()
+                    .tolist()
+                )
+
+
+                selected_subject = st.sidebar.multiselect(
+                    "Select Subject",
+                    subjects
+                )
+
+
+                if selected_subject:
+
+                    data = data[
+                        data[subject_column]
+                        .isin(selected_subject)
+                    ]
+
+
+            # Date filter
+
+            if date_column:
+
+                data[date_column] = pd.to_datetime(
+                    data[date_column],
+                    errors="coerce"
+                )
+
+
+                st.sidebar.header("📅 Date Filter")
+
+
+                min_date = (
+                    data[date_column]
+                    .min()
+                )
+
+                max_date = (
+                    data[date_column]
+                    .max()
+                )
+
+
+                if pd.notna(min_date) and pd.notna(max_date):
+
+                    date_range = st.sidebar.date_input(
+                        "Select Date Range",
+                        value=(
+                            min_date,
+                            max_date
+                        )
+                    )
+
+
+                    if len(date_range) == 2:
+
+                        start_date, end_date = date_range
+
+
+                        data = data[
+                            (
+                                data[date_column]
+                                >= pd.Timestamp(start_date)
+                            )
+                            &
+                            (
+                                data[date_column]
+                                <= pd.Timestamp(end_date)
+                            )
+                        ]
+
+
+
+            # Teacher summary
+
+            summary = (
+                data
+                .groupby(teacher_column)
+                .size()
+                .reset_index(name="Total Resources")
+            )
+
+
+            summary = summary.sort_values(
+                by="Total Resources",
+                ascending=False
+            )
+
+
+            st.subheader("👩‍🏫 Teacher Resource Summary")
+
+            st.dataframe(
+                summary,
+                use_container_width=True
+            )
+
+
+            # Subject Summary
+
+            if subject_column:
+
+                st.subheader("📚 Subject Resource Summary")
+
+
+                subject_summary = (
+                    data
+                    .groupby(subject_column)
+                    .size()
+                    .reset_index(
+                        name="Total Resources"
+                    )
+                    .sort_values(
+                        by="Total Resources",
+                        ascending=False
+                    )
+                )
+
+
+                st.dataframe(
+                    subject_summary,
+                    use_container_width=True
+                )
+
+
+
+            # Download Excel
+
+            output = io.BytesIO()
+
+
+            with pd.ExcelWriter(
+                output,
+                engine="xlsxwriter"
+            ) as writer:
+
+                summary.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="Teacher Summary"
+                )
+
+
+                if subject_column:
+
+                    subject_summary.to_excel(
+                        writer,
+                        index=False,
+                        sheet_name="Subject Summary"
+                    )
+
+
+            st.download_button(
+                label="⬇️ Download Summary Excel",
+                data=output.getvalue(),
+                file_name="Teacher_Resource_Summary.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+
+
+        else:
+
+            st.warning(
+                "Teacher Name column was not detected."
+            )
