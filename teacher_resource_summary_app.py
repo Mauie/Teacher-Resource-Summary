@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
-import xml.etree.ElementTree as ET
 import io
 import re
-import os
-import matplotlib.pyplot as plt
 
 st.set_page_config(
     page_title="Teacher Resource Summary",
@@ -57,19 +54,20 @@ def read_file(uploaded_file):
 
         elif file_name.endswith(".xls"):
 
-   try:
-         return pd.read_excel(
-            uploaded_file,
-            engine="xlrd"
-        )
+            try:
 
-    except Exception:
+                return pd.read_excel(
+                    uploaded_file,
+                    engine="xlrd"
+                )
 
-        uploaded_file.seek(0)
+            except Exception:
 
-        return pd.read_html(
-            uploaded_file
-        )[0]
+                uploaded_file.seek(0)
+
+                return pd.read_xml(
+                    uploaded_file
+                )
 
 
 
@@ -158,7 +156,7 @@ if uploaded_files:
             if any(keyword in col_lower for keyword in [
                 "teacher",
                 "teacher name",
-                "Created By",
+                "created by",
                 "createdby"
             ]):
 
