@@ -70,6 +70,19 @@ if uploaded_files:
             df["Teacher Name"] = df["Teacher Name"].fillna("").astype(str).str.strip()
             df = df[df["Teacher Name"] != ""]
 
+            # ==========================
+# Clean Subject Column
+# ==========================
+if "Subject" in df.columns:
+    df["Subject"] = (
+        df["Subject"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
+else:
+    df["Subject"] = "No Subject"
+    
             if "Created Date" in df.columns:
                 df["Created Date"] = pd.to_datetime(df["Created Date"], errors="coerce")
 
@@ -84,6 +97,23 @@ if uploaded_files:
 
 if raw_data:
     combined_df = pd.concat(raw_data, ignore_index=True)
+# ==========================
+# Subject Filter
+# ==========================
+subjects = sorted(filtered_df["Subject"].dropna().unique())
+
+all_subjects = "All Subjects"
+
+selected_subjects = st.multiselect(
+    "📚 Filter by Subject",
+    [all_subjects] + list(subjects),
+    default=all_subjects,
+)
+
+if all_subjects not in selected_subjects:
+    filtered_df = filtered_df[
+        filtered_df["Subject"].isin(selected_subjects)
+    ]
 
     st.subheader("🔎 Filter Options")
 
@@ -113,13 +143,31 @@ if raw_data:
     if filtered_df.empty:
         st.warning("⚠️ No data after filtering.")
     else:
-        summary = filtered_df.groupby(["Teacher Name", "Resource Type"]).size().unstack(fill_value=0).reset_index()
-        summary = summary.sort_values("Teacher Name").reset_index(drop=True)
-        summary["Total"] = summary.iloc[:, 1:].sum(axis=1)
-        total_row = ["Total"] + summary.iloc[:, 1:].sum(numeric_only=True).tolist()
-        summary.loc[len(summary)] = total_row
-        summary.insert(0, "No.", list(range(1, len(summary))) + [None])
+        summary = (
+    filtered_df
+    .groupby(["Subject", "Teacher Name", "Resource Type"])
+    .size()
+    .unstack(fill_value=0)
+    .reset_index()
+)
+summary = summary.sort_values(
+    ["Subject", "Teacher Name"]
+).reset_index(drop=True)
 
+numeric_cols = summary.select_dtypes(include="number").columns
+summary["Total"] = summary[numeric_cols].sum(axis=1)
+
+total_row = {
+    "Subject": "",
+    "Teacher Name": "Total"
+}
+
+for col in numeric_cols:
+    total_row[col] = summary[col].sum()
+
+summary.loc[len(summary)] = total_row
+
+summary.insert(0, "No.", list(range(1, len(summary))) + [None])
         st.subheader("📋 Filtered Resource Summary")
         st.dataframe(summary, use_container_width=True)
 
