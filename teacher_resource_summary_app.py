@@ -33,7 +33,11 @@ def read_file(uploaded_file):
                     return pd.read_excel(uploaded_file, engine="openpyxl")
                 except Exception:
                     uploaded_file.seek(0)
-                    return pd.read_xml(uploaded_file)
+                    try:
+                        return pd.read_excel(uploaded_file, engine="odf")
+                    except Exception:
+                        uploaded_file.seek(0)
+                        return pd.read_xml(uploaded_file)
         elif file_name.endswith(".xml"):
             return pd.read_xml(uploaded_file)
     except Exception as e:
@@ -54,7 +58,10 @@ if uploaded_files:
     if all_data:
         data = pd.concat(all_data, ignore_index=True)
         
-        st.success(f"{len(uploaded_files)} file(s) uploaded successfully")
+        st.success(f"{len(uploaded_files)} file(s) uploaded successfully - {len(data)} records found")
+        
+        # Debug: Show columns found
+        st.write("**Columns detected:**", list(data.columns))
         
         # Detect key columns
         title_col = None
@@ -75,6 +82,8 @@ if uploaded_files:
                 created_date_col = col
             elif "total access" in col_lower:
                 access_col = col
+        
+        st.write(f"**Mapping:** Title={title_col}, Subject={subject_col}, Created By={created_by_col}, Date={created_date_col}, Access={access_col}")
         
         # Sidebar filters
         st.sidebar.header("🔍 Filters")
@@ -146,6 +155,9 @@ if uploaded_files:
         if display_cols:
             display_df = filtered_data[display_cols].copy()
             st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.warning("No matching columns found. Showing raw data:")
+            st.dataframe(filtered_data, use_container_width=True)
         
         # Create summaries
         col1, col2 = st.columns(2)
