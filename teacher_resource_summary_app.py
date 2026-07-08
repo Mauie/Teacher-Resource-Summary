@@ -55,9 +55,9 @@ def read_file(uploaded_file):
 
 
 
-       elif file_name.endswith(".xls"):
+        elif file_name.endswith(".xls"):
 
-        try:
+   try:
          return pd.read_excel(
             uploaded_file,
             engine="xlrd"
