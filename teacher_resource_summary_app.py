@@ -159,7 +159,7 @@ if uploaded_files:
             if any(keyword in col_lower for keyword in [
                 "teacher",
                 "teacher name",
-                "created by",
+                "Created By",
                 "createdby"
             ]):
 
