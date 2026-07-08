@@ -180,6 +180,8 @@ if uploaded_files:
 
 
         st.write("Detected Teacher Column:", teacher_column)
+        st.write("All Columns Found:")
+        st.write(list(data.columns))
         st.write("Detected Subject Column:", subject_column)
         st.write("Detected Date Column:", date_column)
 
