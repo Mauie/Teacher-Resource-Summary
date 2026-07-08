@@ -152,65 +152,78 @@ if raw_data:
             (filtered_df["Created Date"] >= start_date) & (filtered_df["Created Date"] <= end_date)
         ]
 
-    if filtered_df.empty:
+        if filtered_df.empty:
         st.warning("⚠️ No data after filtering.")
     else:
-       summary = (
-    filtered_df
-    .groupby(["Teacher Name", "Resource Type"])
-    .size()
-    .unstack(fill_value=0)
-    .reset_index()
-)
+        summary = (
+            filtered_df
+            .groupby(["Teacher Name", "Resource Type"])
+            .size()
+            .unstack(fill_value=0)
+            .reset_index()
+        )
 
-summary = summary.sort_values("Teacher Name").reset_index(drop=True)
+        summary = summary.sort_values("Teacher Name").reset_index(drop=True)
 
-numeric_cols = summary.select_dtypes(include="number").columns
-summary["Total"] = summary[numeric_cols].sum(axis=1)
+        numeric_cols = summary.select_dtypes(include="number").columns
+        summary["Total"] = summary[numeric_cols].sum(axis=1)
 
-total_row = {
-    "Teacher Name": "Total"
-}
+        total_row = {
+            "Teacher Name": "Total"
+        }
 
-for col in numeric_cols:
-    total_row[col] = summary[col].sum()
+        for col in numeric_cols:
+            total_row[col] = summary[col].sum()
 
-summary.loc[len(summary)] = total_row
+        summary.loc[len(summary)] = total_row
 
-summary.insert(
-    0,
-    "No.",
-    list(range(1, len(summary))) + [None]
-)
+        summary.insert(
+            0,
+            "No.",
+            list(range(1, len(summary))) + [None]
+        )
+
         st.subheader("📋 Filtered Resource Summary")
         st.dataframe(summary, use_container_width=True)
 
         st.subheader("📊 Bar Chart")
-        chart_data = summary.iloc[:-1].set_index("Teacher Name").drop(columns=["No.", "Total"], errors="ignore")
+        chart_data = summary.iloc[:-1].set_index("Teacher Name").drop(
+            columns=["No.", "Total"],
+            errors="ignore"
+        )
         st.bar_chart(chart_data)
 
         st.subheader("🥧 Pie Chart")
         pie_data = summary.iloc[:-1].set_index("Teacher Name")["Total"]
+
         fig, ax = plt.subplots()
-        ax.pie(pie_data, labels=pie_data.index, autopct='%1.1f%%', startangle=90)
+        ax.pie(
+            pie_data,
+            labels=pie_data.index,
+            autopct="%1.1f%%",
+            startangle=90
+        )
         ax.axis("equal")
         st.pyplot(fig)
 
         chart_img = io.BytesIO()
-        fig.savefig(chart_img, format='png')
+        fig.savefig(chart_img, format="png")
         chart_img.seek(0)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
             summary.to_excel(writer, index=False, sheet_name="Summary")
             chart_data.to_excel(writer, sheet_name="Chart Data")
-            writer.sheets["Summary"].insert_image("H2", "chart.png", {"image_data": chart_img})
+            writer.sheets["Summary"].insert_image(
+                "H2",
+                "chart.png",
+                {"image_data": chart_img},
+            )
 
         st.download_button(
             "⬇️ Download Filtered Excel with Chart",
             data=output.getvalue(),
             file_name="teacher_resource_summary_filtered.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-else:
     st.info("Please upload one or more resource files.")
